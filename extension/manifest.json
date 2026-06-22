@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Amazon Product Analyzer",
+  "version": "1.0",
+  "description": "Analyze Amazon products using Keepa & SellerAmp",
+  "permissions": ["activeTab"],
+  "host_permissions": ["https://www.amazon.com/*", "https://www.amazon.co.uk/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.amazon.com/dp/*", "https://www.amazon.com/*/dp/*", "https://www.amazon.com/gp/product/*"],
+      "js": ["content.js"],
+      "css": ["style.css"]
+    }
+  ],
+  "icons": {}
+}
