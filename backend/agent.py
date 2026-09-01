@@ -10,7 +10,7 @@ import json
 import os
 
 from fastapi import APIRouter, HTTPException
-from openai import APIConnectionError, OpenAI
+from openai import APIConnectionError, APIStatusError, OpenAI
 from pydantic import BaseModel
 
 from agent_tools import TOOL_SCHEMAS, dispatch_tool
@@ -66,6 +66,13 @@ def chat(req: ChatRequest) -> ChatResponse:
                 502,
                 f"Could not reach the model backend at {AGENT_BASE_URL}. Is Ollama running "
                 f"('ollama serve') and is the model pulled ('ollama pull {AGENT_MODEL}')? ({e})",
+            )
+        except APIStatusError as e:
+            raise HTTPException(
+                502,
+                f"Model backend at {AGENT_BASE_URL} rejected the request (HTTP {e.status_code}). "
+                f"Usually means the model name '{AGENT_MODEL}' isn't pulled, or AGENT_BASE_URL/AGENT_API_KEY "
+                f"is misconfigured for whatever's running there. Raw error: {e}",
             )
 
         msg = completion.choices[0].message

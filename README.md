@@ -8,7 +8,23 @@ Manager persona) that can call all of the above as tools during chat.
 
 ## Setup
 
-### 1. Backend
+### Fastest path: one command
+
+```bash
+./start.sh
+```
+
+This installs Ollama if it's not already on your machine (macOS/Linux — on
+Windows, install manually from https://ollama.com/download first, then
+re-run), pulls the `llama3.1` model, starts the Ollama server, sets up the
+Python venv and dependencies, and launches the backend. When it finishes,
+open **http://localhost:8000/** — that's your bot.
+
+The first run downloads the model (a few GB) so it takes a few minutes;
+every run after that is fast. Override the model or port with env vars:
+`AGENT_MODEL=qwen2.5:14b PORT=8001 ./start.sh`.
+
+### Manual setup (if you want to see/control each step)
 
 ```bash
 cd backend
@@ -23,8 +39,6 @@ uvicorn main:app --reload
 Backend runs at `http://localhost:8000`. Interactive API docs at
 `http://localhost:8000/docs`.
 
-### 2. Chat website (the AI agent)
-
 The chat agent needs a model to talk to. Default setup uses **Ollama** — free,
 runs entirely on your machine, no API key or signup:
 
@@ -34,23 +48,27 @@ ollama pull llama3.1     # or another tool-calling-capable model, e.g. qwen2.5:1
 ollama serve              # usually already running as a background service after install
 ```
 
-With the backend running (`uvicorn main:app --reload` from `backend/`), open
-**http://localhost:8000/** in a browser — that's the chat website, served
-directly by the FastAPI app. Ask it about a product idea, your margins, an
-inventory reorder, a PPC campaign, or a policy notice; it'll call the
-`/economics`, `/inventory`, `/ppc`, `/sourcing`, or `/poa` endpoints as tools
-when you give it enough numbers to run them.
+With the backend running, open **http://localhost:8000/** in a browser —
+that's the chat website, served directly by the FastAPI app. Ask it about a
+product idea, your margins, an inventory reorder, a PPC campaign, or a policy
+notice; it'll call the `/economics`, `/inventory`, `/ppc`, `/sourcing`, or
+`/poa` endpoints as tools when you give it enough numbers to run them.
 
 Want a different (better, but paid) model later — Groq, OpenAI, or an
 Anthropic-compatible proxy? Just change `AGENT_BASE_URL` / `AGENT_API_KEY` /
 `AGENT_MODEL` in `.env`; no code changes needed, since the agent talks to any
-OpenAI-compatible chat-completions API.
+OpenAI-compatible chat-completions API. (Claude specifically doesn't fit this
+path — Anthropic's API isn't OpenAI-compatible and Claude has no local/Ollama
+option since its weights aren't distributed; wiring in real Claude means
+rewriting `agent.py` against the `anthropic` SDK and paying per token.)
 
 **Known limitation:** a free local model has no live web search. The agent's
 persona is instructed to say so plainly instead of presenting a guess as a
-verified fee/policy fact — see `backend/persona.py`.
+verified fee/policy fact — see `backend/persona.py`. Errors talking to the
+model backend (unreachable, wrong model name, misconfigured URL) come back
+from `/agent/chat` as a clean 502 with a specific cause, not a raw stack trace.
 
-### 3. Chrome Extension
+### Chrome Extension
 
 1. Open `chrome://extensions/`
 2. Enable **Developer mode** (top right)
