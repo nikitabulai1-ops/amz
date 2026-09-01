@@ -54,13 +54,18 @@ product idea, your margins, an inventory reorder, a PPC campaign, or a policy
 notice; it'll call the `/economics`, `/inventory`, `/ppc`, `/sourcing`, or
 `/poa` endpoints as tools when you give it enough numbers to run them.
 
-Want a different (better, but paid) model later — Groq, OpenAI, or an
-Anthropic-compatible proxy? Just change `AGENT_BASE_URL` / `AGENT_API_KEY` /
-`AGENT_MODEL` in `.env`; no code changes needed, since the agent talks to any
-OpenAI-compatible chat-completions API. (Claude specifically doesn't fit this
-path — Anthropic's API isn't OpenAI-compatible and Claude has no local/Ollama
-option since its weights aren't distributed; wiring in real Claude means
-rewriting `agent.py` against the `anthropic` SDK and paying per token.)
+Want a different model later — Groq, OpenAI, **Ollama Cloud** (ollama.com's
+hosted models — bigger than most machines can run locally, free tier for
+light usage, get a key at ollama.com/settings/keys), or another
+OpenAI-compatible endpoint? Just change `AGENT_BASE_URL` / `AGENT_API_KEY` /
+`AGENT_MODEL` in `.env` — no code changes needed, see the commented example
+in `.env.example`. One thing to know: switching off local Ollama means your
+prompts (and whatever business numbers are in them) leave your machine and
+go to that provider's servers — local Ollama is the only fully offline option
+here. (Claude specifically doesn't fit this env-var swap — Anthropic's API
+isn't OpenAI-compatible and Claude has no local/Ollama option since its
+weights aren't distributed; wiring in real Claude means rewriting `agent.py`
+against the `anthropic` SDK and paying per token.)
 
 **Known limitation:** a free local model has no live web search. The agent's
 persona is instructed to say so plainly instead of presenting a guess as a
