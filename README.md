@@ -10,15 +10,25 @@ Manager persona) that can call all of the above as tools during chat.
 
 ### Fastest path: one command
 
+**macOS/Linux:**
 ```bash
 ./start.sh
 ```
 
-This installs Ollama if it's not already on your machine (macOS/Linux — on
-Windows, install manually from https://ollama.com/download first, then
-re-run), pulls the `llama3.1` model, starts the Ollama server, sets up the
-Python venv and dependencies, and launches the backend. When it finishes,
-open **http://localhost:8000/** — that's your bot.
+**Windows (PowerShell):**
+```powershell
+.\start.ps1
+```
+If PowerShell refuses to run it ("running scripts is disabled on this
+system"), run this once first: `Set-ExecutionPolicy -Scope Process
+-ExecutionPolicy Bypass`, then try `.\start.ps1` again.
+
+Either script installs Ollama if it's not already on your machine (on
+Windows, if it's missing the script points you to
+https://ollama.com/download/windows to install it once, since that step
+needs a GUI installer), pulls the `llama3.1` model, starts the Ollama server,
+sets up the Python venv and dependencies, and launches the backend. When it
+finishes, open **http://localhost:8000/** — that's your bot.
 
 The first run downloads the model (a few GB) so it takes a few minutes;
 every run after that is fast. Override the model or port with env vars:
