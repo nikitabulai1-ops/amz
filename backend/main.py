@@ -4,16 +4,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import httpx
 
+from economics import router as economics_router
+from inventory import router as inventory_router
+from ppc import router as ppc_router
+from sourcing import router as sourcing_router
+from poa import router as poa_router
+
 load_dotenv()
 
-app = FastAPI(title="Amazon Product Analyzer")
+app = FastAPI(title="Amazon FBA Operations Manager")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+app.include_router(economics_router)
+app.include_router(inventory_router)
+app.include_router(ppc_router)
+app.include_router(sourcing_router)
+app.include_router(poa_router)
 
 KEEPA_API_KEY = os.getenv("KEEPA_API_KEY")
 SELLERAMP_API_KEY = os.getenv("SELLERAMP_API_KEY")
