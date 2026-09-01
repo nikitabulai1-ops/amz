@@ -1,9 +1,10 @@
 # Amazon FBA Operations Manager
 
-Chrome extension + Python (FastAPI) backend for running FBA operations day to day:
-per-ASIN product analysis (Keepa/SellerAmp), unit economics, inventory reorder
-planning, PPC campaign auditing, sourcing risk screening, and Plan of Action
-drafting.
+Chrome extension + Python (FastAPI) backend + a chat website for running FBA
+operations day to day: per-ASIN product analysis (Keepa/SellerAmp), unit
+economics, inventory reorder planning, PPC campaign auditing, sourcing risk
+screening, Plan of Action drafting, and a personal AI agent (your Operations
+Manager persona) that can call all of the above as tools during chat.
 
 ## Setup
 
@@ -22,7 +23,34 @@ uvicorn main:app --reload
 Backend runs at `http://localhost:8000`. Interactive API docs at
 `http://localhost:8000/docs`.
 
-### 2. Chrome Extension
+### 2. Chat website (the AI agent)
+
+The chat agent needs a model to talk to. Default setup uses **Ollama** — free,
+runs entirely on your machine, no API key or signup:
+
+```bash
+# Install Ollama: https://ollama.com/download
+ollama pull llama3.1     # or another tool-calling-capable model, e.g. qwen2.5:14b
+ollama serve              # usually already running as a background service after install
+```
+
+With the backend running (`uvicorn main:app --reload` from `backend/`), open
+**http://localhost:8000/** in a browser — that's the chat website, served
+directly by the FastAPI app. Ask it about a product idea, your margins, an
+inventory reorder, a PPC campaign, or a policy notice; it'll call the
+`/economics`, `/inventory`, `/ppc`, `/sourcing`, or `/poa` endpoints as tools
+when you give it enough numbers to run them.
+
+Want a different (better, but paid) model later — Groq, OpenAI, or an
+Anthropic-compatible proxy? Just change `AGENT_BASE_URL` / `AGENT_API_KEY` /
+`AGENT_MODEL` in `.env`; no code changes needed, since the agent talks to any
+OpenAI-compatible chat-completions API.
+
+**Known limitation:** a free local model has no live web search. The agent's
+persona is instructed to say so plainly instead of presenting a guess as a
+verified fee/policy fact — see `backend/persona.py`.
+
+### 3. Chrome Extension
 
 1. Open `chrome://extensions/`
 2. Enable **Developer mode** (top right)
@@ -67,6 +95,16 @@ Fills a standard Root Cause / Corrective Actions / Preventive Actions Plan of
 Action from case details, lists the attachments Amazon typically expects for
 that violation type, and flags root-cause/preventive-action text that reads
 too generic to pass review.
+
+### `POST /agent/chat`
+`{"message": "...", "session_id": "optional, defaults to 'default'"}` — sends
+a message to the chat agent, which can call any of the five endpoints above
+as tools. Returns `{"reply": "...", "tools_used": ["..."]}`. This is what the
+chat website (`/`) calls; hit it directly if you want to build another
+front end.
+
+### `POST /agent/reset?session_id=`
+Clears a chat session's history.
 
 ### `GET /health`
 Liveness check.

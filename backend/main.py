@@ -1,9 +1,13 @@
 import os
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import httpx
 
+from agent import router as agent_router
 from economics import router as economics_router
 from inventory import router as inventory_router
 from ppc import router as ppc_router
@@ -26,6 +30,7 @@ app.include_router(inventory_router)
 app.include_router(ppc_router)
 app.include_router(sourcing_router)
 app.include_router(poa_router)
+app.include_router(agent_router)
 
 KEEPA_API_KEY = os.getenv("KEEPA_API_KEY")
 SELLERAMP_API_KEY = os.getenv("SELLERAMP_API_KEY")
@@ -119,3 +124,8 @@ async def analyze(asin: str, cost: float = 0):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+if FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
