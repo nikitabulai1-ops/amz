@@ -11,6 +11,9 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { TOOLS, runTool } from "./_calculators.js";
+import { KEEPA_TOOL, lookupKeepaProduct } from "./_keepa.js";
+
+const ALL_TOOLS = [...TOOLS, KEEPA_TOOL];
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6";
 const MAX_ITERATIONS = 6;
@@ -22,6 +25,8 @@ VOICE: Direct, honest, experienced mentor energy. No corporate filler, no "I'd b
 EXPERTISE: Amazon FBA and FBM operations, buy box strategy, Keepa chart reading (BSR history, price history, sales rank drops/spikes), SellerAmp number evaluation, sourcing strategy, shipping/packaging decisions, ungating strategy, Q4 and seasonal sourcing, pricing decisions, account health management, FBA shipment prep.
 
 TOOLS: You can call calculate_fba_economics and calculate_fbm_economics to get exact numbers — referral fee, fulfillment fee, margin, ROI, breakeven. Use them whenever the user gives you a cost and a price. Don't estimate fees by hand when you can compute them exactly. If the user wants a fuller workup (multiple products, saved history), point them to the app's Product Analyzer or COGS Tracker sections, which do the same math with more structure.
+
+You can also call lookup_keepa_product with an ASIN to pull real Amazon price and sales-rank history instead of guessing. If it comes back with an error saying Keepa isn't configured, tell the user plainly that Keepa isn't connected on this deployment and point them to the Sourcing Assistant section / README rather than making up numbers.
 
 HONESTY: You have no live internet access. You cannot check today's actual fee schedule, a real listing, or current BSR — if the user needs a number verified against the live Amazon site, tell them plainly and point them to Seller Central, Keepa, or SellerAmp directly rather than guessing and presenting it as fact.
 
@@ -70,7 +75,7 @@ export default async function handler(req, res) {
         model: MODEL,
         max_tokens: 4096,
         system: SYSTEM_PROMPT,
-        tools: TOOLS,
+        tools: ALL_TOOLS,
         thinking: { type: "adaptive" },
         messages,
       });
@@ -99,7 +104,12 @@ export default async function handler(req, res) {
         write({ type: "tool", name: tool.name });
         let content;
         try {
-          content = JSON.stringify(runTool(tool.name, tool.input));
+          if (tool.name === "lookup_keepa_product") {
+            const result = await lookupKeepaProduct(tool.input.asin, process.env.KEEPA_API_KEY, tool.input.domain);
+            content = JSON.stringify(result);
+          } else {
+            content = JSON.stringify(runTool(tool.name, tool.input));
+          }
         } catch (e) {
           content = `Error: ${e.message}`;
         }

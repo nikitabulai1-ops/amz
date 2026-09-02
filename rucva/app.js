@@ -847,6 +847,38 @@ function renderSourcing(root) {
   card.appendChild(el("div", { class: "section-title" }, ["Sourcing Assistant"]));
   card.appendChild(el("div", { class: "section-desc" }, ["Set up a sourcing session — get Keepa filter settings, a checklist, and a running tally."]));
 
+  const keepaLookupCard = el("div", { class: "card", style: "margin-bottom:18px;" });
+  keepaLookupCard.appendChild(el("div", { class: "section-title" }, ["Product History Lookup (Keepa)"]));
+  keepaLookupCard.appendChild(el("div", { class: "section-desc" }, ["Pull real price and sales-rank history for an ASIN. Requires KEEPA_API_KEY set on the server — see README."]));
+  const lookupForm = el("div", { class: "row" });
+  const asinInput = el("input", { type: "text", placeholder: "e.g. B08N5WRWNW", style: "text-transform:uppercase;" });
+  const domainSelect = el("select", {}, ["US", "GB", "DE", "FR", "JP", "CA", "IT", "ES", "IN", "MX"].map((d) => el("option", { value: d }, [d])));
+  const lookupBtn = el("button", { class: "btn btn-navy", type: "button", style: "align-self:flex-end;height:38px;" }, ["Look Up"]);
+  lookupForm.appendChild(el("div", { class: "field", style: "flex:2;" }, [el("label", {}, ["ASIN"]), asinInput]));
+  lookupForm.appendChild(el("div", { class: "field" }, [el("label", {}, ["Marketplace"]), domainSelect]));
+  lookupForm.appendChild(lookupBtn);
+  keepaLookupCard.appendChild(lookupForm);
+  const keepaResult = el("div", { id: "keepaResult", style: "margin-top:14px;" });
+  keepaLookupCard.appendChild(keepaResult);
+  card.appendChild(keepaLookupCard);
+
+  lookupBtn.addEventListener("click", async () => {
+    const asin = asinInput.value.trim().toUpperCase();
+    keepaResult.innerHTML = "";
+    if (!asin) return;
+    keepaResult.appendChild(el("div", { class: "section-desc" }, [`Looking up ${asin}…`]));
+    try {
+      const resp = await fetch(`/api/keepa?asin=${encodeURIComponent(asin)}&domain=${encodeURIComponent(domainSelect.value)}`);
+      const data = await resp.json();
+      keepaResult.innerHTML = "";
+      if (!resp.ok) throw new Error(data.error || `Server returned ${resp.status}`);
+      keepaResult.appendChild(renderKeepaResult(data));
+    } catch (e) {
+      keepaResult.innerHTML = "";
+      keepaResult.appendChild(el("div", { class: "banner warn" }, ["Keepa lookup failed: " + e.message]));
+    }
+  });
+
   const form = el("form", { class: "row" });
   const budget = el("input", { type: "number", step: "1", placeholder: "e.g. 500" });
   const category = el("input", { type: "text", placeholder: "e.g. Kitchen" });
@@ -923,6 +955,54 @@ function renderSourcing(root) {
     sessionCard.appendChild(btnRow);
     out.appendChild(sessionCard);
   });
+}
+
+function sparklineSVG(points) {
+  if (!points || !points.length) return el("div", { class: "section-desc" }, ["No history data returned for this series."]);
+  const w = 560, h = 90, pad = 6;
+  const values = points.map((p) => p.value);
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const stepX = points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
+  const coords = points.map((p, i) => {
+    const x = pad + i * stepX;
+    const y = h - pad - ((p.value - min) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  const wrap = el("div", {});
+  wrap.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none"><polyline points="${coords}" fill="none" stroke="#c9a227" stroke-width="2" /></svg>`;
+  wrap.appendChild(el("div", { style: "display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:2px;" }, [
+    new Date(points[0].date).toLocaleDateString(),
+    new Date(points[points.length - 1].date).toLocaleDateString(),
+  ]));
+  return wrap;
+}
+
+function renderKeepaResult(data) {
+  const wrap = el("div", {});
+  wrap.appendChild(el("div", { style: "font-weight:700;" }, [data.title || data.asin]));
+  const subLine = [data.brand, (data.categoryTree || []).join(" > ")].filter(Boolean).join(" — ");
+  if (subLine) wrap.appendChild(el("div", { class: "section-desc" }, [subLine]));
+
+  const money = (v) => (v == null ? "—" : `$${v.toFixed(2)}`);
+  const num = (v) => (v == null ? "—" : v.toLocaleString());
+
+  wrap.appendChild(el("div", { class: "grid cols-3", style: "margin-top:6px;" }, [
+    statCard("Current Price", money(data.currentPrice)),
+    statCard("90-Day Avg Price", money(data.avgPrice90)),
+    statCard("180-Day Avg Price", money(data.avgPrice180)),
+    statCard("Current BSR", num(data.currentSalesRank)),
+    statCard("90-Day Avg BSR", num(data.avgSalesRank90)),
+    statCard("Buy Box Price", money(data.currentBuyBoxPrice)),
+  ]));
+
+  wrap.appendChild(el("div", { class: "section-title", style: "margin-top:18px;font-size:14px;" }, ["Price History"]));
+  wrap.appendChild(sparklineSVG(data.priceHistory));
+
+  wrap.appendChild(el("div", { class: "section-title", style: "margin-top:18px;font-size:14px;" }, ["Sales Rank History (lower is better)"]));
+  wrap.appendChild(sparklineSVG(data.salesRankHistory));
+
+  return wrap;
 }
 
 /* ---------- Daily Tasks ---------- */
