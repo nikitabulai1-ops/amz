@@ -148,6 +148,11 @@ periodically.
 - Voice input/output depends on the Web Speech API, which is solid in Chrome/Edge
   and weak-to-absent in Safari/Firefox. The mic and speaker buttons auto-hide if
   your browser doesn't support them.
+- The chat supports photo/screenshot attachments (paste with Ctrl+V, or the 📎
+  button) — up to 4 images per message, ~4MB each. Attached images aren't kept
+  in chat history after that turn (consistent with how Claude's own apps handle
+  images in a running conversation) — describe what mattered about one in text
+  if you need to refer back to it later.
 - The Drive integration can upload/list files but isn't a full file browser —
   good enough for saving notes and pulling up a folder's contents, not a
   Drive replacement.

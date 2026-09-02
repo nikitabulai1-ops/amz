@@ -14,7 +14,7 @@ function defaultDB() {
       googleClientId: "",
       sheetId: "",
       driveFolderId: "",
-      ttsEnabled: true,
+      ttsEnabled: false,
     },
     products: [],       // COGS tracker rows
     tasks: [],
@@ -31,9 +31,13 @@ function loadDB() {
     const raw = localStorage.getItem(STORE_KEY);
     if (!raw) return defaultDB();
     const parsed = JSON.parse(raw);
-    return Object.assign(defaultDB(), parsed, {
+    const merged = Object.assign(defaultDB(), parsed, {
       settings: Object.assign(defaultDB().settings, parsed.settings || {}),
     });
+    // One-time migration: TTS used to default on. Force it off once for
+    // anyone who already has saved data, then respect whatever they choose after.
+    if (!merged.settings._ttsMigratedOff) { merged.settings.ttsEnabled = false; merged.settings._ttsMigratedOff = true; }
+    return merged;
   } catch (e) {
     return defaultDB();
   }
@@ -437,33 +441,75 @@ function statCard(label, value, tone, sub) {
 function renderChat(root) {
   const panel = el("div", { class: "card section", id: "chatPanel" });
   const log = el("div", { id: "chatLog" });
+  const previewRow = el("div", { id: "imagePreviewRow" });
   const bar = el("div", { id: "chatInputBar" });
-  const textarea = el("textarea", { id: "chatInput", placeholder: "Ask about a product, Keepa data, sourcing, pricing, ungating…", rows: "1" });
+  const textarea = el("textarea", { id: "chatInput", placeholder: "Ask about a product, Keepa data, sourcing, pricing, ungating… (paste a photo to attach it)", rows: "1" });
+  const attachBtn = el("button", { id: "attachBtn", type: "button", title: "Attach a photo" }, ["📎"]);
+  const fileInput = el("input", { type: "file", accept: "image/*", multiple: "multiple", style: "display:none;" });
   const micBtn = el("button", { id: "micBtn", type: "button", title: "Voice input" }, ["🎤"]);
   const speakToggle = el("button", { id: "speakToggle", type: "button", title: "Read replies aloud", class: DB.settings.ttsEnabled ? "on" : "" }, ["🔊"]);
   const sendBtn = el("button", { id: "sendBtn", class: "btn btn-navy", type: "button" }, ["Send"]);
 
   bar.appendChild(textarea);
+  bar.appendChild(attachBtn);
+  bar.appendChild(fileInput);
   if (Speech.supported()) bar.appendChild(micBtn); else micBtn.style.display = "none";
   if (Speech.ttsSupported()) bar.appendChild(speakToggle); else speakToggle.style.display = "none";
   bar.appendChild(sendBtn);
 
   panel.appendChild(log);
+  panel.appendChild(previewRow);
   panel.appendChild(bar);
   root.appendChild(panel);
 
   if (!DB.chat.length) {
-    addChatNotice(log, "RUCVA is ready. Ask about a sourcing decision, paste Keepa numbers, or ask it to work through a product with you.");
+    addChatNotice(log, "RUCVA is ready. Ask about a sourcing decision, paste Keepa numbers, paste a screenshot, or ask it to work through a product with you.");
   } else {
     DB.chat.forEach((m) => addChatBubble(log, m.role, m.content));
   }
 
+  let attachedImages = []; // {blob, url}
+  const MAX_IMAGES = 4;
+  const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+  function renderPreview() {
+    previewRow.innerHTML = "";
+    if (!attachedImages.length) { previewRow.style.display = "none"; return; }
+    previewRow.style.display = "flex";
+    attachedImages.forEach((img, i) => {
+      const rm = el("button", { type: "button", title: "Remove", onclick: () => { URL.revokeObjectURL(img.url); attachedImages.splice(i, 1); renderPreview(); } }, ["×"]);
+      previewRow.appendChild(el("div", { class: "img-thumb" }, [el("img", { src: img.url }), rm]));
+    });
+  }
+
+  function addImages(files) {
+    for (const file of files) {
+      if (!file.type || !file.type.startsWith("image/")) continue;
+      if (file.size > MAX_IMAGE_BYTES) { addChatNotice(log, `${file.name || "That image"} is too large (max ~4MB) — try a smaller screenshot.`); continue; }
+      if (attachedImages.length >= MAX_IMAGES) { addChatNotice(log, `Up to ${MAX_IMAGES} image(s) per message.`); break; }
+      attachedImages.push({ blob: file, url: URL.createObjectURL(file) });
+    }
+    renderPreview();
+  }
+
+  attachBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => { addImages(fileInput.files); fileInput.value = ""; });
+  textarea.addEventListener("paste", (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) if (item.kind === "file" && item.type && item.type.startsWith("image/")) files.push(item.getAsFile());
+    if (files.length) { e.preventDefault(); addImages(files); }
+  });
+
   function send() {
     const text = textarea.value.trim();
-    if (!text) return;
+    if (!text && !attachedImages.length) return;
     textarea.value = "";
     autoGrow();
-    runChatTurn(log, text);
+    const images = attachedImages.slice();
+    attachedImages = []; renderPreview();
+    runChatTurn(log, text || "(see attached photo)", images);
   }
   sendBtn.addEventListener("click", send);
   textarea.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
@@ -484,9 +530,12 @@ function renderChat(root) {
   log.scrollTop = log.scrollHeight;
 }
 
-function addChatBubble(log, role, text) {
+function addChatBubble(log, role, text, imageUrls) {
   const row = el("div", { class: "chatrow " + role });
   const bubble = el("div", { class: "bubble" }, [text || ""]);
+  if (imageUrls && imageUrls.length) {
+    bubble.appendChild(el("div", { class: "chat-image-row" }, imageUrls.map((u) => el("img", { src: u }))));
+  }
   row.appendChild(bubble);
   log.appendChild(row);
   log.scrollTop = log.scrollHeight;
@@ -496,19 +545,39 @@ function addChatNotice(log, text) {
   log.appendChild(el("div", { class: "chat-notice" }, [text]));
 }
 
-async function runChatTurn(log, userText) {
+function fileToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",").pop());
+    reader.onerror = () => reject(new Error("Couldn't read that image file."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function runChatTurn(log, userText, images) {
   DB.chat.push({ role: "user", content: userText });
   saveDB();
-  addChatBubble(log, "user", userText);
+  addChatBubble(log, "user", userText, images && images.length ? images.map((i) => i.url) : null);
 
   const bubble = addChatBubble(log, "assistant", "");
   const toolNames = [];
 
   try {
+    const history = DB.chat.slice(-30).map((m) => ({ role: m.role, content: m.content }));
+    if (images && images.length) {
+      const blocks = [];
+      for (const img of images) {
+        const data = await fileToBase64(img.blob);
+        blocks.push({ type: "image", source: { type: "base64", media_type: img.blob.type || "image/png", data } });
+      }
+      blocks.push({ type: "text", text: userText });
+      history[history.length - 1] = { role: "user", content: blocks };
+    }
+
     const resp = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: DB.chat.slice(-30) }),
+      body: JSON.stringify({ messages: history }),
     });
     if (!resp.ok || !resp.body) throw new Error(`Server returned ${resp.status}`);
 
