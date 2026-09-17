@@ -153,6 +153,12 @@ Your job is to help me find, analyze, evaluate, and manage Amazon OA opportuniti
 - `data/` — raw source data (exports, scraped data, spreadsheets)
 - `deals/` — deals being evaluated
   - `deals/analyzed/` — completed deal analyses (BUY/CONSIDER/PASS)
-- `research/` — retailer research, sourcing leads, category research
+- `research/` — retailer research, sourcing leads, category research.
+  Backed by a live research layer (`backend/research.py`) that normalizes
+  WebSearch/WebFetch results into a labeled PRODUCT/PRICING/SOURCE schema,
+  caches them under `research/cache/`, and logs every call to
+  `research/logs/research.log`. It never fetches amazon.* URLs itself —
+  Amazon data comes from the Keepa integration once configured. See
+  `research/README.md` for how to call it.
 - `reports/` — business reports (P&L, inventory, cash flow, performance)
 - `tools/` — scripts/utilities supporting sourcing and analysis

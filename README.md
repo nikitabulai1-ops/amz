@@ -123,6 +123,16 @@ Screens a product idea for hazmat/meltable keywords, gated-category terms,
 IP/Brand-Registry risk, competitive saturation (from competitor review
 counts), and BSR trend from a historical BSR series.
 
+### `POST /research/web-search`, `/web-fetch`, `/product`, `/retailer-product`, `/multi`
+Normalizes web research into a labeled, cached, sourced record — it does NOT
+search or fetch the web itself. These endpoints classify/extract/cache
+whatever raw search results or page content is passed in (as retrieved by a
+caller with real web access, e.g. a Claude Code session's WebSearch/WebFetch
+tools), label every field VERIFIED/ASSUMED/ESTIMATED/CONFLICTING/UNAVAILABLE,
+and refuse to process any amazon.* URL (use the Keepa integration above for
+Amazon data). See `AMZ-VA/research/README.md` for the full design and how to
+use it from a Claude Code session.
+
 ### `POST /poa/draft`
 Fills a standard Root Cause / Corrective Actions / Preventive Actions Plan of
 Action from case details, lists the attachments Amazon typically expects for

@@ -11,6 +11,7 @@ from agent import router as agent_router
 from economics import router as economics_router
 from inventory import router as inventory_router
 from ppc import router as ppc_router
+from research import router as research_router
 from sourcing import router as sourcing_router
 from poa import router as poa_router
 
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(economics_router)
 app.include_router(inventory_router)
 app.include_router(ppc_router)
+app.include_router(research_router)
 app.include_router(sourcing_router)
 app.include_router(poa_router)
 app.include_router(agent_router)

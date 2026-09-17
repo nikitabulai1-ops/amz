@@ -15,6 +15,7 @@ import economics
 import inventory
 import poa
 import ppc
+import research
 import sourcing
 
 _REGISTRY: dict[str, tuple[type[BaseModel], Callable[[BaseModel], BaseModel], str]] = {
@@ -47,6 +48,44 @@ _REGISTRY: dict[str, tuple[type[BaseModel], Callable[[BaseModel], BaseModel], st
         poa.draft,
         "Draft a templated Plan of Action (Root Cause / Corrective / Preventive) for an Amazon "
         "policy or account-health notice, with required attachments per violation type.",
+    ),
+    "web_search": (
+        research.WebSearchRequest,
+        research.web_search_endpoint,
+        "Normalize web search results into a labeled, cached record. This does NOT search the "
+        "web itself — it only classifies/caches results already retrieved by a live web-search "
+        "tool. If raw_results is omitted, returns status not_provided rather than guessing. "
+        "This runtime has no live web access, so calling it without raw_results will always "
+        "come back empty — say so plainly rather than presenting a guess as a fact.",
+    ),
+    "web_fetch": (
+        research.WebFetchRequest,
+        research.web_fetch_endpoint,
+        "Normalize the content of one fetched web page into labeled, cached fields. Does NOT "
+        "fetch pages itself — requires raw_content already retrieved by a live web-fetch tool. "
+        "Refuses to process amazon.* URLs (use the Keepa integration for Amazon data instead). "
+        "This runtime has no live web access, so calling it without raw_content will always "
+        "come back empty — say so plainly rather than presenting a guess as a fact.",
+    ),
+    "research_product": (
+        research.ResearchProductRequest,
+        research.research_product_endpoint,
+        "Build a standardized PRODUCT/PRICING/SOURCE research record for one product from "
+        "already-gathered search_results and/or fetched_pages (see web_search/web_fetch). "
+        "Flags conflicting prices across sources instead of picking one.",
+    ),
+    "research_retailer_product": (
+        research.ResearchRetailerProductRequest,
+        research.research_retailer_product_endpoint,
+        "Single-URL version of research_product for one retailer's product page, from "
+        "already-fetched raw_content. Refuses amazon.* URLs.",
+    ),
+    "research_multiple_sources": (
+        research.ResearchMultipleSourcesRequest,
+        research.research_multiple_sources_endpoint,
+        "Cross-check several already-gathered search/fetch sources about the same question "
+        "(e.g. a policy or gating check, not necessarily a priced product) and flag disagreements "
+        "between sources instead of resolving them silently.",
     ),
 }
 
