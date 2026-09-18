@@ -53,6 +53,37 @@ guess. `web_search`/`web_fetch`/`research_*` tools require raw results
 already retrieved by Claude's own WebSearch/WebFetch tools (see
 `AMZ-VA/research/README.md`) — they don't fetch anything themselves.
 
+## Where business outputs get saved
+
+Every kind of output this VA produces has one designated place. Save to
+these locations by default — don't leave a real work product only in the
+chat transcript, and don't invent a new location for something that
+already has one below:
+
+| Output | Save to |
+|---|---|
+| A completed deal analysis (PRODUCT/COST/AMAZON/PROFITABILITY/DEMAND/RISK/FINAL ANALYSIS) | `AMZ-VA/deals/analyzed/` — one file per deal |
+| The running summary of every analyzed deal | `AMZ-VA/deals/tracker.md` — one row per deal; add a row whenever a deal in `deals/analyzed/` is created, don't recreate the whole file |
+| A business report (P&L, inventory, cash flow, performance, etc.) | `AMZ-VA/reports/` — one dated file per report |
+| A drafted business document (an agreement, a letter, anything meant to eventually go external) | `AMZ-VA/documents/` — draft here first; nothing in this folder has been sent or finalized just because it exists as a file. See "Approval before external actions" below. |
+| A pending task, a product needing review, or a follow-up | `AMZ-VA/reports/tasks.md` — see maintenance rules below |
+
+This is a local-first design on purpose: nothing here depends on Google
+Drive/Docs/Sheets, which aren't connected yet. When they are, they'll be a
+delivery step layered on top of files that already exist in these
+folders — Google will never be the thing that generates content, only the
+thing that sends an already-drafted local file somewhere else.
+
+## Approval before external actions
+
+A file existing in `AMZ-VA/documents/` (or anywhere else) is a **draft**,
+not a sent or finalized document. Per `AMZ-VA/CLAUDE.md` rule 12 (no
+irreversible actions without explicit approval), never describe a draft as
+sent, delivered, signed, or final — say plainly that it's a draft saved
+locally, and only take any external-facing action (sending it, uploading
+it, or — once built — pushing it to Google) after the owner explicitly
+says to.
+
 ## Maintaining `AMZ-VA/reports/tasks.md`
 
 - Only add an item when the owner actually raises it, or when something
@@ -60,3 +91,6 @@ already retrieved by Claude's own WebSearch/WebFetch tools (see
 - Mark items done rather than deleting them, so there's a simple history.
 - Keep entries short — a line or two each. A full deal analysis belongs in
   `AMZ-VA/deals/analyzed/`; a full report belongs in `AMZ-VA/reports/`.
+- Use the "Products Needing Review" section for anything the owner wants
+  reviewed or re-checked — this is the review list; it doesn't need a
+  separate file.
