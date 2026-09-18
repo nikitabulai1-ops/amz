@@ -12,6 +12,7 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 import economics
+import google_client
 import inventory
 import keepa_client
 import poa
@@ -95,6 +96,53 @@ _REGISTRY: dict[str, tuple[type[BaseModel], Callable[[BaseModel], BaseModel], st
         "current Buy Box price, current/avg BSR, price/BSR/Buy Box history, category, and Keepa "
         "quota remaining. Requires KEEPA_API_KEY configured in the environment — returns "
         "status=missing_api_key (not a guess) if it isn't set. Domain defaults to US.",
+    ),
+    "upload_file_to_drive": (
+        google_client.DriveUploadRequest,
+        google_client.upload_file_to_drive,
+        "Upload a local file to Google Drive. Requires confirmed=true — the owner must have "
+        "explicitly approved this specific upload in this conversation first; otherwise this "
+        "returns status=approval_required and uploads nothing. Requires Google authorization "
+        "already completed via backend/google_auth_setup.py (returns status=missing_token if not).",
+    ),
+    "find_drive_files": (
+        google_client.DriveFindRequest,
+        google_client.find_drive_files,
+        "List/search files this app can see in Google Drive. Read-only, no approval needed. Uses "
+        "the drive.file scope, so this can only see files this app created or that were explicitly "
+        "opened with it — NOT the owner's whole Drive. An empty result may just mean the file "
+        "exists but was never shared with this app.",
+    ),
+    "create_google_doc": (
+        google_client.GoogleDocCreateRequest,
+        google_client.create_google_doc,
+        "Create a Google Doc from an already-drafted local text/Markdown file. Requires "
+        "confirmed=true after explicit owner approval; otherwise returns status=approval_required.",
+    ),
+    "create_google_sheet": (
+        google_client.GoogleSheetCreateRequest,
+        google_client.create_google_sheet,
+        "Create a Google Sheet from an already-existing local CSV file (e.g. an export of the deal "
+        "tracker). Requires confirmed=true after explicit owner approval.",
+    ),
+    "append_sheet_rows": (
+        google_client.SheetAppendRequest,
+        google_client.append_sheet_rows,
+        "Append rows to an existing Google Sheet this app has access to. Requires confirmed=true "
+        "after explicit owner approval.",
+    ),
+    "read_sheet_values": (
+        google_client.SheetReadRequest,
+        google_client.read_sheet_values,
+        "Read values from an existing Google Sheet this app has access to. Read-only, no approval "
+        "needed — but only works for sheets created by this app or otherwise explicitly shared "
+        "with it (drive.file scope limitation).",
+    ),
+    "update_sheet_values": (
+        google_client.SheetUpdateRequest,
+        google_client.update_sheet_values,
+        "Overwrite a specific range of values in an existing Google Sheet. Requires confirmed=true "
+        "after explicit owner approval.",
     ),
 }
 

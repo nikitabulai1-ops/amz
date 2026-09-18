@@ -3,3 +3,10 @@ __pycache__/
 .env
 venv/
 node_modules/
+
+# Google OAuth credentials/tokens should live outside this repo entirely
+# (see backend/.env.example) — these patterns are a defensive backstop in
+# case one ever ends up inside it by mistake, never the primary safeguard.
+google_client_secret.json
+google_token.json
+client_secret*.json
