@@ -34,6 +34,7 @@ own API documentation before trusting it further.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -302,3 +303,17 @@ async def fetch_keepa_product(
     finally:
         if owns_client:
             await http_client.aclose()
+
+
+class KeepaLookupRequest(BaseModel):
+    asin: str
+    domain: str = "US"
+
+
+def fetch_keepa_product_sync(req: KeepaLookupRequest) -> KeepaProductData:
+    """Sync wrapper for backend/agent_tools.py's tool registry, which expects
+    plain synchronous Callable[[BaseModel], BaseModel] functions everywhere
+    (the same shape economics.calculate, inventory.reorder, etc. already
+    use). Does not change fetch_keepa_product's behavior at all — reads
+    KEEPA_API_KEY from the environment exactly as a direct call would."""
+    return asyncio.run(fetch_keepa_product(req.asin, domain=req.domain))

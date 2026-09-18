@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 import economics
 import inventory
+import keepa_client
 import poa
 import ppc
 import research
@@ -86,6 +87,14 @@ _REGISTRY: dict[str, tuple[type[BaseModel], Callable[[BaseModel], BaseModel], st
         "Cross-check several already-gathered search/fetch sources about the same question "
         "(e.g. a policy or gating check, not necessarily a priced product) and flag disagreements "
         "between sources instead of resolving them silently.",
+    ),
+    "lookup_keepa_product": (
+        keepa_client.KeepaLookupRequest,
+        keepa_client.fetch_keepa_product_sync,
+        "Look up real Keepa data for one ASIN: current/avg price (30/90/180d), current New price, "
+        "current Buy Box price, current/avg BSR, price/BSR/Buy Box history, category, and Keepa "
+        "quota remaining. Requires KEEPA_API_KEY configured in the environment — returns "
+        "status=missing_api_key (not a guess) if it isn't set. Domain defaults to US.",
     ),
 }
 
